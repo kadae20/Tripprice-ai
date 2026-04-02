@@ -5,11 +5,11 @@ import { motion } from 'framer-motion';
 export interface Hotel {
   hotel_id: string;
   hotel_name: string;
-  star_rating?: number;
-  agoda_rating?: number;
-  price_min?: number;
-  price_max?: number;
-  image_url?: string;
+  star_rating?: number | null;
+  agoda_rating?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  image_url?: string | null;
   agoda_link: string;
   reason?: string;
   fit?: string;
@@ -25,8 +25,9 @@ interface Props {
 
 export default function HotelCard({ hotel, rank, onTrack }: Props) {
   const stars = hotel.star_rating ?? 0;
-  const fmt = (n?: number) =>
-    n ? (n / 10000).toLocaleString() + '만' : '?';
+  const hasPrice = hotel.price_min != null || hotel.price_max != null;
+  const fmt = (n?: number | null) =>
+    n != null ? Math.round(n).toLocaleString() : null;
 
   return (
     <motion.div
@@ -65,28 +66,30 @@ export default function HotelCard({ hotel, rank, onTrack }: Props) {
           overflow: 'hidden',
         }}
       >
-        {hotel.image_url ? (
-          <img
-            src={hotel.image_url}
-            alt={hotel.hotel_name}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              img.style.display = 'none';
-              const fallback = img.nextElementSibling as HTMLElement | null;
-              if (fallback) fallback.style.display = 'flex';
-            }}
-          />
-        ) : null}
+        <img
+          src={hotel.image_url ?? ''}
+          alt={hotel.hotel_name}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: hotel.image_url ? 'block' : 'none',
+          }}
+          onError={(e) => {
+            const img = e.currentTarget as HTMLImageElement;
+            img.style.display = 'none';
+            const fallback = img.parentElement?.querySelector<HTMLElement>(
+              '[data-fallback]'
+            );
+            if (fallback) fallback.style.display = 'flex';
+          }}
+        />
 
         {/* fallback */}
         <div
+          data-fallback
           style={{
             position: 'absolute',
             inset: 0,
@@ -163,7 +166,7 @@ export default function HotelCard({ hotel, rank, onTrack }: Props) {
                 {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
               </span>
             )}
-            {hotel.agoda_rating && (
+            {hotel.agoda_rating != null && (
               <span
                 style={{
                   color: 'var(--accent-orange)',
@@ -177,9 +180,11 @@ export default function HotelCard({ hotel, rank, onTrack }: Props) {
                 {hotel.agoda_rating}/10
               </span>
             )}
-            <span style={{ color: 'rgba(240,244,255,0.7)', fontSize: '13px' }}>
-              {fmt(hotel.price_min)}~{fmt(hotel.price_max)}원/박
-            </span>
+            {hasPrice && (
+              <span style={{ color: 'rgba(240,244,255,0.7)', fontSize: '13px' }}>
+                {fmt(hotel.price_min) ?? '?'}~{fmt(hotel.price_max) ?? '?'}원/박
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -187,29 +192,26 @@ export default function HotelCard({ hotel, rank, onTrack }: Props) {
       {/* content panel */}
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {/* price prominent */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-            1박 기준
-          </span>
-          <span
-            style={{
-              color: 'var(--text-primary)',
-              fontWeight: 700,
-              fontSize: '18px',
-            }}
-          >
-            {fmt(hotel.price_min)}
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '14px' }}>
-              {' '}~ {fmt(hotel.price_max)}원
+        {hasPrice ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+              1박 기준
             </span>
-          </span>
-        </div>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '18px' }}>
+              {fmt(hotel.price_min) ?? '?'}
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '14px' }}>
+                {' '}~ {fmt(hotel.price_max) ?? '?'}원
+              </span>
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ color: 'var(--accent-orange)', fontSize: '13px' }}>📋</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+              아고다에서 실시간 가격 확인
+            </span>
+          </div>
+        )}
 
         {/* reason with large quote marks */}
         {hotel.reason && (

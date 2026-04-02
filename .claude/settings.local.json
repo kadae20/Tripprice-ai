@@ -9,7 +9,13 @@
       "Bash(npm install:*)",
       "Bash(rtk curl:*)",
       "Bash(test:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd:*)",
+      "Bash(netstat:*)",
+      "Bash(powershell.exe:*)"
     ]
   }
 }
