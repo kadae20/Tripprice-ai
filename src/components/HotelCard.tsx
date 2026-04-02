@@ -80,8 +80,11 @@ export default function HotelCard({ hotel, rank, onTrack }: Props) {
             objectFit: 'cover',
           }}
           onError={(e) => {
-            // primary 이미지 실패 시 picsum 폴백
-            e.currentTarget.src = `https://picsum.photos/seed/${hotel.hotel_id}/800/450`;
+            const el = e.currentTarget;
+            // 무한 루프 방지: 이미 폴백 URL이면 재시도 안 함
+            if (el.dataset.fallbackApplied) return;
+            el.dataset.fallbackApplied = 'true';
+            el.src = `https://picsum.photos/seed/${hotel.hotel_id}/800/450`;
           }}
         />
 

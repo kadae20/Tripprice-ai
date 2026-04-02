@@ -186,17 +186,23 @@ export async function POST(req: NextRequest) {
     });
 
     const hotelsJson = JSON.stringify(
-      candidates.slice(0, 3).map((h) => ({
-        hotel_id: h.hotel_id,
-        hotel_name: h.hotel_name,
-        star_rating: h.star_rating,
-        agoda_rating: h.agoda_rating,
-        price_min: h.price_min,
-        price_max: h.price_max,
-        // DB image_url 없으면 hotel_id를 seed로 사용 → 호텔마다 고유하고 일관된 이미지
-        image_url: h.image_url ?? `https://picsum.photos/seed/${h.hotel_id}/800/450`,
-        agoda_link: h.agoda_link,
-      }))
+      candidates.slice(0, 3).map((h) => {
+        // source.unsplash.com(서비스 종료) 또는 null → picsum 폴백
+        const validImage =
+          h.image_url && !h.image_url.includes('source.unsplash.com')
+            ? h.image_url
+            : `https://picsum.photos/seed/${h.hotel_id}/800/450`;
+        return {
+          hotel_id: h.hotel_id,
+          hotel_name: h.hotel_name,
+          star_rating: h.star_rating,
+          agoda_rating: h.agoda_rating,
+          price_min: h.price_min,
+          price_max: h.price_max,
+          image_url: validImage,
+          agoda_link: h.agoda_link,
+        };
+      })
     );
 
     const response = result.toTextStreamResponse();

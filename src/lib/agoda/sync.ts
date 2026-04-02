@@ -138,10 +138,12 @@ export async function syncHotelsFromCsvBytes(
   return results;
 }
 
-function resolveImage(imageUrl: string, hotelName: string): string {
-  if (imageUrl && imageUrl.startsWith('http')) return imageUrl;
-  const query = encodeURIComponent(`${hotelName} hotel`);
-  return `https://source.unsplash.com/800x600/?${query}`;
+function resolveImage(imageUrl: string, _hotelName: string): string {
+  // source.unsplash.com은 서비스 종료(503) — DB에 저장하지 않고 빈 문자열 반환
+  if (imageUrl && imageUrl.startsWith('http') && !imageUrl.includes('source.unsplash.com')) {
+    return imageUrl;
+  }
+  return '';
 }
 
 function parseAmenities(raw: string): Record<string, boolean> | undefined {
