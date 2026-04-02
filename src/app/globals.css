@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #050A14;
+  --bg-surface: #0A1628;
+  --bg-elevated: #0F1F3D;
+  --accent-orange: #FF6B35;
+  --accent-gold: #C9A84C;
+  --accent-mint: #4DFFD2;
+  --text-primary: #F0F4FF;
+  --text-secondary: #7A8BA8;
+  --text-muted: #3D5070;
+  --border: rgba(255,255,255,0.06);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-noto-sans-kr), sans-serif;
+}
+
+/* grain texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* custom scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--accent-orange); border-radius: 2px; }
+
+/* Playfair Display utility */
+.font-display { font-family: var(--font-playfair), serif; }
+
+/* date input dark styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.4);
+  cursor: pointer;
+}
+
+input[type="range"] {
+  accent-color: var(--accent-orange);
+}
