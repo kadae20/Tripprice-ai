@@ -24,6 +24,7 @@ export default function SearchPage() {
   );
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [streamText, setStreamText] = useState('');
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const [lastInput, setLastInput] = useState<SearchInput | null>(null);
 
   const handleSearch = useCallback(
@@ -32,6 +33,7 @@ export default function SearchPage() {
       setStage('loading');
       setStreamText('');
       setHotels([]);
+      setFallbackUrl(null);
 
       try {
         const res = await fetch('/api/recommend', {
@@ -75,15 +77,49 @@ export default function SearchPage() {
             const aiData = JSON.parse(jsonMatch[0]) as {
               recommendations: Array<{
                 hotel_id: string;
-                reason: string;
-                fit: string;
-                caution: string;
+                hotel_name?: string;
+                star_rating?: number;
+                agoda_rating?: number;
+                reason?: string;
+                fit?: string;
+                caution?: string;
               }>;
+              ai_mode?: boolean;
+              fallback?: boolean;
+              agodaUrl?: string;
             };
-            const recs = Object.fromEntries(
-              aiData.recommendations.map((r) => [r.hotel_id, r])
-            );
-            aiHotels = baseHotels.map((h) => ({ ...h, ...recs[h.hotel_id] }));
+
+            if (aiData.fallback && aiData.agodaUrl) {
+              // 최후 폴백: 아고다 검색 링크만
+              setFallbackUrl(aiData.agodaUrl);
+            } else if (aiData.ai_mode) {
+              // AI 지식 기반 추천: x-hotels-data의 기본 호텔 정보에 reason/fit/caution 병합
+              const recs = Object.fromEntries(
+                aiData.recommendations.map((r) => [r.hotel_id, r])
+              );
+              // baseHotels에 hotel_id "ai_1","ai_2","ai_3"가 있으면 병합,
+              // 없으면 recommendations를 직접 Hotel 객체로 변환
+              if (baseHotels.length > 0) {
+                aiHotels = baseHotels.map((h) => ({ ...h, ...recs[h.hotel_id] }));
+              } else {
+                aiHotels = aiData.recommendations.map((r) => ({
+                  hotel_id: r.hotel_id,
+                  hotel_name: r.hotel_name ?? '',
+                  star_rating: r.star_rating,
+                  agoda_rating: r.agoda_rating,
+                  agoda_link: '',
+                  reason: r.reason,
+                  fit: r.fit,
+                  caution: r.caution,
+                }));
+              }
+            } else {
+              // 정상 DB 기반 추천
+              const recs = Object.fromEntries(
+                aiData.recommendations.map((r) => [r.hotel_id, r])
+              );
+              aiHotels = baseHotels.map((h) => ({ ...h, ...recs[h.hotel_id] }));
+            }
           }
         } catch {
           /* 기본 데이터 사용 */
@@ -206,7 +242,66 @@ export default function SearchPage() {
           </>
         )}
 
-        {stage === 'result' && (
+        {stage === 'result' && hotels.length === 0 && fallbackUrl && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '20px',
+              padding: '40px 24px',
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🗺️</div>
+              <h2 style={{ color: 'var(--text-primary)', fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>
+                {lastInput?.city} 데이터 준비 중
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.7, marginBottom: '24px' }}>
+                현재 이 도시의 호텔 데이터가 없습니다.<br />
+                아고다에서 직접 검색하시면 최저가 호텔을 찾을 수 있어요.
+              </p>
+              <a
+                href={fallbackUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#FF6B35',
+                  color: '#FFFFFF',
+                  padding: '14px 28px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  textDecoration: 'none',
+                  marginBottom: '16px',
+                }}
+              >
+                아고다에서 {lastInput?.city} 호텔 검색 →
+              </a>
+            </div>
+            <button
+              onClick={() => setStage('input')}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                padding: '10px 20px',
+                color: 'var(--text-secondary)',
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              ← 다시 검색하기
+            </button>
+          </div>
+        )}
+
+        {stage === 'result' && hotels.length > 0 && (
           <ResultList
             hotels={hotels}
             sessionId={sessionId}

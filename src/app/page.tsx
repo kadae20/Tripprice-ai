@@ -994,14 +994,22 @@ function Footer() {
             href="https://www.agoda.com/partners/partnersearch.aspx?cid=1926938&pcs=8"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'rgba(255,107,53,0.08)',
+              border: '1px solid rgba(255,107,53,0.3)',
+              borderRadius: '6px',
+              padding: '3px 8px',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'var(--accent-orange)',
+              textDecoration: 'none',
+              letterSpacing: '0.03em',
+            }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://sherpa.agoda.com/Badge/GetBadge?badgetype=1&refkey=aD9U0V6icRJDnb7ui2lFyA%3D%3D"
-              alt="아고다 공식 파트너"
-              style={{ height: '22px', width: 'auto', verticalAlign: 'middle', opacity: 0.85 }}
-            />
+            ✓ 아고다 공식 파트너
           </a>
         </span>
         <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
