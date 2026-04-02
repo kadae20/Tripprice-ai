@@ -67,7 +67,10 @@ export default function HotelCard({ hotel, rank, onTrack }: Props) {
         }}
       >
         <img
-          src={hotel.image_url ?? ''}
+          src={
+            hotel.image_url ||
+            `https://picsum.photos/seed/${hotel.hotel_id}/800/450`
+          }
           alt={hotel.hotel_name}
           style={{
             position: 'absolute',
@@ -75,33 +78,12 @@ export default function HotelCard({ hotel, rank, onTrack }: Props) {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            display: hotel.image_url ? 'block' : 'none',
           }}
           onError={(e) => {
-            const img = e.currentTarget as HTMLImageElement;
-            img.style.display = 'none';
-            const fallback = img.parentElement?.querySelector<HTMLElement>(
-              '[data-fallback]'
-            );
-            if (fallback) fallback.style.display = 'flex';
+            // primary 이미지 실패 시 picsum 폴백
+            e.currentTarget.src = `https://picsum.photos/seed/${hotel.hotel_id}/800/450`;
           }}
         />
-
-        {/* fallback */}
-        <div
-          data-fallback
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: hotel.image_url ? 'none' : 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '48px',
-            background: 'linear-gradient(135deg, #1a2a4a 0%, #0d1f35 100%)',
-          }}
-        >
-          🏨
-        </div>
 
         {/* gradient overlay — bottom 60% */}
         <div
