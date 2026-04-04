@@ -17,6 +17,15 @@ const PURPOSE_KO: Record<string, string> = {
   solo: '혼자여행',
 };
 
+interface FormConfig {
+  initialStep?: 1 | 2;
+  initialPurpose?: SearchInput['travelPurpose'];
+  initialBudgetMax?: number;
+  initialCity?: string;
+  initialPriority?: SearchInput['priority'];
+  highlightAlternativePurposes?: boolean;
+}
+
 export default function SearchPage() {
   const [stage, setStage] = useState<Stage>('input');
   const [sessionId] = useState(
@@ -27,6 +36,8 @@ export default function SearchPage() {
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const [lastInput, setLastInput] = useState<SearchInput | null>(null);
   const [copied, setCopied] = useState(false);
+  const [formConfig, setFormConfig] = useState<FormConfig>({});
+  const [formKey, setFormKey] = useState(0);
   const autoSearched = useRef(false);
 
   const handleSearch = useCallback(
@@ -201,6 +212,41 @@ export default function SearchPage() {
     });
   }, []);
 
+  // 일반 리셋 (조건 초기화)
+  const handleReset = useCallback(() => {
+    setFormConfig({});
+    setFormKey((k) => k + 1);
+    setStage('input');
+  }, []);
+
+  // "예산 높이면?" — budgetMax × 1.5, 2단계로 진입
+  const handleBudgetUp = useCallback(() => {
+    const newMax = Math.round((lastInput?.budgetMax ?? 300000) * 1.5);
+    setFormConfig({
+      initialStep: 2,
+      initialPurpose: lastInput?.travelPurpose,
+      initialBudgetMax: newMax,
+      initialCity: lastInput?.city,
+      initialPriority: lastInput?.priority,
+    });
+    setFormKey((k) => k + 1);
+    setStage('input');
+  }, [lastInput]);
+
+  // "목적 바꾸면?" — 1단계, 현재 목적 제외 강조
+  const handlePurposeChange = useCallback(() => {
+    setFormConfig({
+      initialStep: 1,
+      initialPurpose: lastInput?.travelPurpose,
+      initialBudgetMax: lastInput?.budgetMax,
+      initialCity: lastInput?.city,
+      initialPriority: lastInput?.priority,
+      highlightAlternativePurposes: true,
+    });
+    setFormKey((k) => k + 1);
+    setStage('input');
+  }, [lastInput]);
+
   return (
     <div
       style={{
@@ -269,7 +315,12 @@ export default function SearchPage() {
         </div>
 
         {stage === 'input' && (
-          <SearchForm onSubmit={handleSearch} loading={false} />
+          <SearchForm
+            key={formKey}
+            onSubmit={handleSearch}
+            loading={false}
+            {...formConfig}
+          />
         )}
 
         {stage === 'loading' && (
@@ -336,7 +387,7 @@ export default function SearchPage() {
               </a>
             </div>
             <button
-              onClick={() => setStage('input')}
+              onClick={handleReset}
               style={{
                 background: 'none',
                 border: '1px solid var(--border)',
@@ -356,52 +407,27 @@ export default function SearchPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* 공유 + 조건 변경 바 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {/* 공유 버튼 */}
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={handleShare}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '10px',
-                    padding: '9px 14px',
-                    color: 'var(--text-secondary)',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  🔗 이 추천 공유하기
-                </button>
-                <a
-                  href={`https://story.kakao.com/share?url=${encodeURIComponent(
-                    typeof window !== 'undefined' ? window.location.href : ''
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: '#FEE500',
-                    border: 'none',
-                    borderRadius: '10px',
-                    padding: '9px 14px',
-                    color: '#191600',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    textDecoration: 'none',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  💬 카카오
-                </a>
-              </div>
+              {/* 공유 버튼 (전체 너비) */}
+              <button
+                onClick={handleShare}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                🔗 이 추천 공유하기
+              </button>
 
               {/* 복사 완료 토스트 */}
               {copied && (
@@ -423,7 +449,7 @@ export default function SearchPage() {
               {/* 조건 변경 버튼 */}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
-                  onClick={() => setStage('input')}
+                  onClick={handleBudgetUp}
                   style={{
                     flex: 1,
                     background: 'none',
@@ -433,12 +459,21 @@ export default function SearchPage() {
                     color: 'var(--text-muted)',
                     fontSize: '12px',
                     cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,107,53,0.3)';
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent-orange)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)';
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
                   }}
                 >
                   예산 높이면? →
                 </button>
                 <button
-                  onClick={() => setStage('input')}
+                  onClick={handlePurposeChange}
                   style={{
                     flex: 1,
                     background: 'none',
@@ -448,6 +483,15 @@ export default function SearchPage() {
                     color: 'var(--text-muted)',
                     fontSize: '12px',
                     cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,107,53,0.3)';
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent-orange)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)';
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
                   }}
                 >
                   목적 바꾸면? →
@@ -459,7 +503,7 @@ export default function SearchPage() {
               hotels={hotels}
               sessionId={sessionId}
               onTrack={handleTrack}
-              onReset={() => setStage('input')}
+              onReset={handleReset}
               city={lastInput?.city}
               purpose={PURPOSE_KO[lastInput?.travelPurpose ?? '']}
               travelPurpose={lastInput?.travelPurpose}

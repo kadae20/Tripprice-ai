@@ -52,9 +52,25 @@ const BUDGET_STEPS = [
   2000000,
 ];
 
+function findBudgetIdx(maxBudget?: number): number {
+  if (!maxBudget) return BUDGET_STEPS.length - 1;
+  for (let i = 0; i < BUDGET_STEPS.length; i++) {
+    if (BUDGET_STEPS[i] >= maxBudget) return i;
+  }
+  return BUDGET_STEPS.length - 1;
+}
+
 interface Props {
   onSubmit: (input: SearchInput) => void;
   loading: boolean;
+  // 편집 진입용 초기값
+  initialStep?: 1 | 2;
+  initialPurpose?: SearchInput['travelPurpose'];
+  initialBudgetMax?: number;
+  initialCity?: string;
+  initialPriority?: SearchInput['priority'];
+  /** true 이면 현재 목적(initialPurpose)을 흐리고 나머지를 강조 */
+  highlightAlternativePurposes?: boolean;
 }
 
 const slideVariants = {
@@ -65,12 +81,26 @@ const slideVariants = {
   exitToRight: { x: 60, opacity: 0 },
 };
 
-export default function SearchForm({ onSubmit, loading }: Props) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [purpose, setPurpose] = useState<SearchInput['travelPurpose'] | ''>('');
-  const [city, setCity] = useState('');
-  const [budgetIdx, setBudgetIdx] = useState(BUDGET_STEPS.length - 1);
-  const [priority, setPriority] = useState<SearchInput['priority'] | ''>('');
+export default function SearchForm({
+  onSubmit,
+  loading,
+  initialStep,
+  initialPurpose,
+  initialBudgetMax,
+  initialCity,
+  initialPriority,
+  highlightAlternativePurposes,
+}: Props) {
+  const [step, setStep] = useState<1 | 2>(initialStep ?? 1);
+  // highlightAlternativePurposes 모드: 목적을 미선택 상태로 시작해 다른 것 선택 유도
+  const [purpose, setPurpose] = useState<SearchInput['travelPurpose'] | ''>(
+    highlightAlternativePurposes ? '' : (initialPurpose ?? '')
+  );
+  const [city, setCity] = useState(initialCity ?? '');
+  const [budgetIdx, setBudgetIdx] = useState(findBudgetIdx(initialBudgetMax));
+  const [priority, setPriority] = useState<SearchInput['priority'] | ''>(
+    initialPriority ?? ''
+  );
   const [checkin, setCheckin] = useState('');
   const [checkout, setCheckout] = useState('');
 
@@ -169,12 +199,26 @@ export default function SearchForm({ onSubmit, loading }: Props) {
                 fontSize: '26px',
                 fontWeight: 700,
                 color: 'var(--text-primary)',
-                marginBottom: '28px',
+                marginBottom: highlightAlternativePurposes ? '12px' : '28px',
                 textAlign: 'center',
               }}
             >
               어떤 여행인가요?
             </h2>
+
+            {/* 목적 변경 힌트 */}
+            {highlightAlternativePurposes && initialPurpose && (
+              <p
+                style={{
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  color: 'var(--accent-mint)',
+                  marginBottom: '20px',
+                }}
+              >
+                다른 목적을 선택해보세요 →
+              </p>
+            )}
 
             {/* purpose grid 2×2 */}
             <div
@@ -187,6 +231,10 @@ export default function SearchForm({ onSubmit, loading }: Props) {
             >
               {PURPOSES.map(({ value, icon, label, sub }) => {
                 const selected = purpose === value;
+                // 목적 변경 모드: initialPurpose(현재 목적)는 흐리게, 나머지는 민트 강조
+                const isCurrentPurpose = highlightAlternativePurposes && value === initialPurpose;
+                const isAlternative = highlightAlternativePurposes && !isCurrentPurpose && !selected;
+
                 return (
                   <button
                     key={value}
@@ -196,14 +244,24 @@ export default function SearchForm({ onSubmit, loading }: Props) {
                       position: 'relative',
                       padding: '24px 16px',
                       borderRadius: '16px',
-                      border: `1px solid ${selected ? 'var(--accent-orange)' : 'var(--border)'}`,
-                      background: selected ? 'var(--bg-elevated)' : 'var(--bg-surface)',
+                      border: selected
+                        ? '1px solid var(--accent-orange)'
+                        : isAlternative
+                        ? '1px solid rgba(77,255,210,0.5)'
+                        : '1px solid var(--border)',
+                      background: selected
+                        ? 'var(--bg-elevated)'
+                        : isAlternative
+                        ? 'rgba(77,255,210,0.05)'
+                        : 'var(--bg-surface)',
                       cursor: 'pointer',
                       textAlign: 'center',
-                      opacity: !selected && purpose !== '' ? 0.4 : 1,
+                      opacity: isCurrentPurpose ? 0.35 : (!selected && purpose !== '' && !highlightAlternativePurposes ? 0.4 : 1),
                       transition: 'all 0.2s',
                       boxShadow: selected
                         ? '0 0 20px rgba(255,107,53,0.15)'
+                        : isAlternative
+                        ? '0 0 12px rgba(77,255,210,0.1)'
                         : 'none',
                     }}
                   >
@@ -228,6 +286,8 @@ export default function SearchForm({ onSubmit, loading }: Props) {
                       style={{
                         color: selected
                           ? 'var(--text-primary)'
+                          : isAlternative
+                          ? 'var(--accent-mint)'
                           : 'var(--text-secondary)',
                         fontWeight: 600,
                         fontSize: '15px',
@@ -240,6 +300,8 @@ export default function SearchForm({ onSubmit, loading }: Props) {
                       style={{
                         color: selected
                           ? 'var(--accent-orange)'
+                          : isAlternative
+                          ? 'rgba(77,255,210,0.7)'
                           : 'var(--text-muted)',
                         fontSize: '12px',
                       }}

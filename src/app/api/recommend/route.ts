@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { streamText, generateText } from 'ai';
+import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import { createServiceClient } from '@/lib/supabase/server';
@@ -35,6 +35,19 @@ interface ConversionStat {
   conversion_rate: number | null;
 }
 
+type AiRec = {
+  hotel_id: string;
+  hotel_name?: string;
+  star_rating?: number;
+  agoda_rating?: number;
+  rank?: number;
+  match_score?: number;
+  fit?: string[];
+  caution?: string;
+  one_line?: string;
+  urgency?: string;
+};
+
 const PURPOSE_KO: Record<string, string> = {
   honeymoon: '신혼여행',
   family: '가족여행',
@@ -48,11 +61,37 @@ const PRIORITY_KO: Record<string, string> = {
   view: '뷰',
 };
 
-/**
- * Claude Haiku로 도시/국가명을 영문으로 변환.
- * 국가명 입력("태국")이면 isCountry=true, countryEn="Thailand"
- * 도시명 입력("방콕")이면 isCountry=false, cityEn="Bangkok"
- */
+// ─── Unsplash 이미지 배치 조회 ─────────────────────────────
+async function fetchUnsplashImages(
+  query: string,
+  hotelIds: string[]
+): Promise<Record<string, string>> {
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (!accessKey || !hotelIds.length) return {};
+
+  try {
+    const res = await fetch(
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' hotel')}&per_page=10&orientation=landscape`,
+      { headers: { Authorization: `Client-ID ${accessKey}` } }
+    );
+    if (!res.ok) return {};
+    const data = (await res.json()) as { results: Array<{ urls: { regular: string } }> };
+    const results = data.results;
+    if (!results.length) return {};
+
+    return Object.fromEntries(
+      hotelIds.map((id) => {
+        const idNum = parseInt(id.replace(/\D/g, '') || '0', 10);
+        const idx = idNum % results.length;
+        return [id, results[idx].urls.regular];
+      })
+    );
+  } catch {
+    return {};
+  }
+}
+
+// ─── 도시/국가명 영문 변환 ────────────────────────────────
 async function translateDestination(city: string): Promise<{
   cityEn: string;
   countryEn: string;
@@ -84,6 +123,18 @@ async function translateDestination(city: string): Promise<{
     }
   } catch { /* 변환 실패 시 원본 사용 */ }
   return { cityEn: city, countryEn: '', isCountry: false };
+}
+
+// ─── AI 추천 JSON 파싱 헬퍼 ──────────────────────────────
+function parseAiRecs(text: string): AiRec[] {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*"(?:hotels|recommendations)"[\s\S]*\}/);
+    if (!jsonMatch) return [];
+    const aiData = JSON.parse(jsonMatch[0]) as { hotels?: AiRec[]; recommendations?: AiRec[] };
+    return aiData.hotels ?? aiData.recommendations ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -174,7 +225,8 @@ export async function POST(req: NextRequest) {
       solo: '가성비·교통 접근성·안전·커뮤니티',
     };
 
-    const result = streamText({
+    // generateText로 검증 가능한 응답 얻기
+    const { text: aiText } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
       system: '한국 여행 전문가. 데이터 기반 호텔 의사결정. 감언이설 금지. JSON만 출력.',
       messages: [
@@ -186,6 +238,7 @@ export async function POST(req: NextRequest) {
             `도시: ${input.city}, 우선순위: ${priorityKo}, 기간: ${input.checkinDate}~${input.checkoutDate}\n\n` +
             `판단 기준 (${purposeKo}): ${PURPOSE_CRITERIA[input.travelPurpose]}\n\n` +
             `후보 호텔:\n${hotelData}\n\n` +
+            `중요: hotels 배열의 모든 항목에 반드시 fit 3개, caution 1개, one_line을 포함해야 함. 누락 시 재출력 요청됨.\n` +
             `최적 호텔 3개 선정. 반드시 아래 JSON만 출력:\n` +
             `{"hotels":[{"hotel_id":"...","rank":1,"match_score":95,` +
             `"fit":["이유1","이유2","이유3"],"caution":"주의사항1가지",` +
@@ -195,13 +248,73 @@ export async function POST(req: NextRequest) {
       maxOutputTokens: 1200,
     });
 
+    // 파싱 및 검증
+    let recsList = parseAiRecs(aiText);
+
+    // 누락 필드 확인 + 1회 재요청
+    const incompleteIds = recsList
+      .filter((r) => !r.fit?.length || !r.caution || !r.one_line)
+      .map((r) => r.hotel_id);
+
+    if (incompleteIds.length > 0) {
+      console.error('호텔 데이터 누락:', incompleteIds);
+      try {
+        const fixCandidates = candidates.filter((h) => incompleteIds.includes(h.hotel_id));
+        const { text: fixText } = await generateText({
+          model: anthropic('claude-haiku-4-5-20251001'),
+          system: '한국 여행 전문가. JSON만 출력.',
+          messages: [
+            {
+              role: 'user',
+              content:
+                `다음 호텔들의 fit(3개), caution(1개), one_line을 반드시 채워서 JSON으로 출력:\n` +
+                `${JSON.stringify(fixCandidates.map((h) => ({ id: h.hotel_id, name: h.hotel_name, rating: h.agoda_rating })))}\n` +
+                `목적: ${purposeKo}, 도시: ${input.city}\n` +
+                `{"hotels":[{"hotel_id":"...","fit":["...","...","..."],"caution":"...","one_line":"..."}]}`,
+            },
+          ],
+          maxOutputTokens: 600,
+        });
+        const fixRecs = parseAiRecs(fixText);
+        const fixMap = Object.fromEntries(fixRecs.map((r) => [r.hotel_id, r]));
+        recsList = recsList.map((r) => ({ ...r, ...(fixMap[r.hotel_id] ?? {}) }));
+      } catch (e) {
+        console.error('재요청 실패:', e);
+      }
+    }
+
+    // 최종 폴백 적용
+    const defaultFit = (city: string, purpose: string) => [
+      `${city} 중심부 접근 용이`,
+      `${purpose} 여행자 선호 호텔`,
+      '아고다 검증 숙소',
+    ];
+    recsList = recsList.map((r) => ({
+      ...r,
+      fit: r.fit?.length ? r.fit.slice(0, 3) : defaultFit(input.city, purposeKo),
+      one_line:
+        r.one_line ??
+        candidates.find((h) => h.hotel_id === r.hotel_id)?.hotel_name ??
+        '',
+    }));
+
+    // Unsplash 이미지 (null 또는 구버전 URL 대체)
+    const top3 = candidates.slice(0, 3);
+    const needsImage = top3
+      .filter((h) => !h.image_url || h.image_url.includes('source.unsplash.com'))
+      .map((h) => h.hotel_id);
+    const unsplashImages =
+      needsImage.length > 0
+        ? await fetchUnsplashImages(cityEn || input.city, needsImage)
+        : {};
+
+    const recsMap = Object.fromEntries(recsList.map((r) => [r.hotel_id, r]));
+
     const hotelsJson = JSON.stringify(
-      candidates.slice(0, 3).map((h) => {
-        // source.unsplash.com(서비스 종료) 또는 null → picsum 폴백
-        const validImage =
-          h.image_url && !h.image_url.includes('source.unsplash.com')
-            ? h.image_url
-            : `https://picsum.photos/seed/${h.hotel_id}/800/450`;
+      top3.map((h) => {
+        // AiRec 필드만 추출 (hotel_id 제외 — 중복 방지)
+        const { hotel_id: _id, ...aiExtra } = recsMap[h.hotel_id] ?? { hotel_id: h.hotel_id };
+        void _id;
         return {
           hotel_id: h.hotel_id,
           hotel_name: h.hotel_name,
@@ -209,16 +322,33 @@ export async function POST(req: NextRequest) {
           agoda_rating: h.agoda_rating,
           price_min: h.price_min,
           price_max: h.price_max,
-          image_url: validImage,
+          image_url:
+            h.image_url && !h.image_url.includes('source.unsplash.com')
+              ? h.image_url
+              : unsplashImages[h.hotel_id] ??
+                `https://picsum.photos/seed/${h.hotel_id}/800/450`,
           agoda_link: h.agoda_link,
+          ...aiExtra,
         };
       })
     );
 
-    const response = result.toTextStreamResponse();
-    const headers = new Headers(response.headers);
-    headers.set('x-hotels-data', Buffer.from(hotelsJson).toString('base64'));
-    return new Response(response.body, { status: response.status, headers });
+    // 스트림으로 AI JSON 전송 (클라이언트 호환 유지)
+    const finalJson = JSON.stringify({ hotels: recsList });
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(finalJson));
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'x-hotels-data': Buffer.from(hotelsJson).toString('base64'),
+      },
+    });
   }
 
   // ─── 4b. DB 결과 없음 → Claude 지식 기반 추천 ─────────────
@@ -236,7 +366,7 @@ export async function POST(req: NextRequest) {
           content:
             `여행지: ${cityEn || countryEn || input.city}, 목적: ${purposeKo}, ` +
             `예산: ${input.budgetMax.toLocaleString()}원/박, 우선순위: ${priorityKo}\n\n` +
-            `실제 존재하는 유명 호텔 3개 추천. JSON만 출력:\n` +
+            `실제 존재하는 유명 호텔 3개 추천. 반드시 모든 항목에 fit 3개, caution 1개, one_line 포함. JSON만 출력:\n` +
             `{"hotels":[{"hotel_id":"ai_1","hotel_name":"실제호텔명","star_rating":4,"agoda_rating":8.5,` +
             `"fit":["이유1","이유2","이유3"],"caution":"주의사항","one_line":"한줄요약","urgency":"긴급도"}` +
             `],"ai_mode":true}`,
@@ -245,40 +375,38 @@ export async function POST(req: NextRequest) {
       maxOutputTokens: 1200,
     });
 
-    // JSON 파싱 후 Hotel 객체 구성
-    const jsonMatch = aiText.match(/\{[\s\S]*"(?:hotels|recommendations)"[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI JSON 파싱 실패');
+    const recs = parseAiRecs(aiText);
+    if (!recs.length) throw new Error('AI JSON 파싱 실패');
 
-    const aiData = JSON.parse(jsonMatch[0]) as {
-      hotels?: Array<{
-        hotel_id: string;
-        hotel_name: string;
-        star_rating?: number;
-        agoda_rating?: number;
-        fit?: string[];
-        caution?: string;
-        one_line?: string;
-        urgency?: string;
-        match_score?: number;
-      }>;
-      recommendations?: Array<{
-        hotel_id: string;
-        hotel_name: string;
-        star_rating?: number;
-        agoda_rating?: number;
-      }>;
-    };
+    // 폴백 적용
+    const validatedRecs = recs.map((r) => ({
+      ...r,
+      fit: r.fit?.length
+        ? r.fit.slice(0, 3)
+        : [`${input.city} 인기 호텔`, `${purposeKo} 적합`, '아고다 예약 가능'],
+      one_line: r.one_line ?? r.hotel_name ?? '추천 호텔',
+    }));
 
-    const recs = aiData.hotels ?? aiData.recommendations ?? [];
-    const aiHotels = recs.map((r) => ({
+    // Unsplash 이미지 (AI 추천 호텔)
+    const hotelIds = validatedRecs.map((r) => r.hotel_id);
+    const unsplashImages = await fetchUnsplashImages(cityEn || input.city, hotelIds);
+
+    const aiHotels = validatedRecs.map((r) => ({
       hotel_id: r.hotel_id,
-      hotel_name: r.hotel_name,
+      hotel_name: r.hotel_name ?? '',
       star_rating: r.star_rating ?? null,
       agoda_rating: r.agoda_rating ?? null,
       price_min: null,
       price_max: null,
-      image_url: null,
+      image_url:
+        unsplashImages[r.hotel_id] ??
+        `https://picsum.photos/seed/${r.hotel_id}/800/450`,
       agoda_link: agodaSearchUrl,
+      fit: r.fit,
+      caution: r.caution,
+      one_line: r.one_line,
+      urgency: r.urgency,
+      match_score: r.match_score,
     }));
 
     const hotelsBase64 = Buffer.from(JSON.stringify(aiHotels)).toString('base64');
