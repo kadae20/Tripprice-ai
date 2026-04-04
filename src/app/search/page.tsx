@@ -23,6 +23,8 @@ interface FormConfig {
   initialBudgetMax?: number;
   initialCity?: string;
   initialPriority?: SearchInput['priority'];
+  initialCheckin?: string;
+  initialCheckout?: string;
   highlightAlternativePurposes?: boolean;
 }
 
@@ -219,7 +221,7 @@ export default function SearchPage() {
     setStage('input');
   }, []);
 
-  // "예산 높이면?" — budgetMax × 1.5, 2단계로 진입
+  // "예산 높이면?" — budgetMax × 1.5, 2단계로 진입 (날짜 유지)
   const handleBudgetUp = useCallback(() => {
     const newMax = Math.round((lastInput?.budgetMax ?? 300000) * 1.5);
     setFormConfig({
@@ -228,12 +230,14 @@ export default function SearchPage() {
       initialBudgetMax: newMax,
       initialCity: lastInput?.city,
       initialPriority: lastInput?.priority,
+      initialCheckin: lastInput?.checkinDate,
+      initialCheckout: lastInput?.checkoutDate,
     });
     setFormKey((k) => k + 1);
     setStage('input');
   }, [lastInput]);
 
-  // "목적 바꾸면?" — 1단계, 현재 목적 제외 강조
+  // "목적 바꾸면?" — 1단계, 현재 목적 제외 강조 (날짜 유지)
   const handlePurposeChange = useCallback(() => {
     setFormConfig({
       initialStep: 1,
@@ -241,6 +245,8 @@ export default function SearchPage() {
       initialBudgetMax: lastInput?.budgetMax,
       initialCity: lastInput?.city,
       initialPriority: lastInput?.priority,
+      initialCheckin: lastInput?.checkinDate,
+      initialCheckout: lastInput?.checkoutDate,
       highlightAlternativePurposes: true,
     });
     setFormKey((k) => k + 1);

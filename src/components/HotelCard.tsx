@@ -40,12 +40,31 @@ export default function HotelCard({ hotel, rank, onTrack, travelPurpose }: Props
   const fmt = (n?: number | null) =>
     n != null ? Math.round(n).toLocaleString() : null;
 
-  // fit 배열로 정규화 (최대 3개)
-  const fitItems: string[] = Array.isArray(hotel.fit)
-    ? hotel.fit.slice(0, 3)
+  // fit 배열 정규화 — 항상 3개 보장
+  const rawFit: string[] = Array.isArray(hotel.fit)
+    ? hotel.fit
     : hotel.fit
-    ? [hotel.fit]
+    ? [hotel.fit as string]
     : [];
+  const fitItems: string[] =
+    rawFit.length > 0
+      ? rawFit.slice(0, 3)
+      : [
+          `아고다 검증 ${hotel.star_rating ? hotel.star_rating + '성급' : '우수 등급'} 숙소`,
+          '여행자 선호 호텔',
+          '합리적 가격대',
+        ];
+
+  // 디버그 로그 (개발·프리뷰 환경)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('HotelCard:', {
+      hotel_id: hotel.hotel_id,
+      fit: hotel.fit,
+      fitItems,
+      caution: hotel.caution,
+      one_line: hotel.one_line,
+    });
+  }
 
   // hotel_id 기반 일관된 조회자 수
   const idNum = parseInt(hotel.hotel_id.replace(/\D/g, '') || '0', 10);
@@ -241,42 +260,40 @@ export default function HotelCard({ hotel, rank, onTrack, travelPurpose }: Props
           </div>
         )}
 
-        {/* fit 체크리스트 */}
-        {fitItems.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              background: 'rgba(77,255,210,0.06)',
-              border: '1px solid rgba(77,255,210,0.12)',
-              borderRadius: '12px',
-              padding: '12px 14px',
-            }}
-          >
-            {fitItems.map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span
-                  style={{
-                    color: 'var(--accent-mint)',
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    flexShrink: 0,
-                    marginTop: '1px',
-                  }}
-                >
-                  ✓
-                </span>
-                <span style={{ color: 'var(--accent-mint)', fontSize: '13px', lineHeight: 1.5 }}>
-                  {item}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* fit 체크리스트 — 항상 표시 */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            background: 'rgba(77,255,210,0.06)',
+            border: '1px solid rgba(77,255,210,0.12)',
+            borderRadius: '12px',
+            padding: '12px 14px',
+          }}
+        >
+          {fitItems.map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <span
+                style={{
+                  color: 'var(--accent-mint)',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  marginTop: '1px',
+                }}
+              >
+                ✓
+              </span>
+              <span style={{ color: 'var(--accent-mint)', fontSize: '13px', lineHeight: 1.5 }}>
+                {item}
+              </span>
+            </div>
+          ))}
+        </div>
 
-        {/* reason — fit 없을 때만 표시 */}
-        {fitItems.length === 0 && hotel.reason && (
+        {/* reason — fit이 폴백일 때만 표시 */}
+        {rawFit.length === 0 && hotel.reason && (
           <div style={{ position: 'relative', paddingLeft: '20px' }}>
             <span
               style={{

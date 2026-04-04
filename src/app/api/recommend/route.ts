@@ -7,6 +7,26 @@ import { createServiceClient } from '@/lib/supabase/server';
 const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const AGODA_PARTNER_CODE = process.env.AGODA_PARTNER_CODE ?? '1926938';
 
+// 도시별 정적 이미지 (Unsplash API 키 없거나 DB 이미지 없을 때 폴백)
+const CITY_IMAGES: Record<string, string> = {
+  Bangkok:     'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=800',
+  Tokyo:       'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800',
+  Seoul:       'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800',
+  Bali:        'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800',
+  Singapore:   'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800',
+  Paris:       'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800',
+  'New York':  'https://images.unsplash.com/photo-1538970272646-f61fabb3a8a2?w=800',
+  'Hong Kong': 'https://images.unsplash.com/photo-1506970845246-18f21d533b20?w=800',
+  Osaka:       'https://images.unsplash.com/photo-1590559899731-a382839e5549?w=800',
+  Phuket:      'https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?w=800',
+  'Da Nang':   'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800',
+  Cancun:      'https://images.unsplash.com/photo-1552074284-5e88ef1aef18?w=800',
+  Dubai:       'https://images.unsplash.com/photo-1526495124232-a04e1849168c?w=800',
+  Barcelona:   'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800',
+  London:      'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800',
+  default:     'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+};
+
 const InputSchema = z.object({
   travelPurpose: z.enum(['honeymoon', 'family', 'business', 'solo']),
   budgetMin: z.number().int().min(0),
@@ -67,6 +87,7 @@ async function fetchUnsplashImages(
   hotelIds: string[]
 ): Promise<Record<string, string>> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  console.log('UNSPLASH_ACCESS_KEY exists:', !!accessKey);
   if (!accessKey || !hotelIds.length) return {};
 
   try {
@@ -249,7 +270,9 @@ export async function POST(req: NextRequest) {
     });
 
     // 파싱 및 검증
+    console.log('Claude raw response:', aiText.slice(0, 500));
     let recsList = parseAiRecs(aiText);
+    console.log('Parsed hotels:', JSON.stringify(recsList.map(r => ({ hotel_id: r.hotel_id, fit: r.fit, caution: r.caution, one_line: r.one_line }))));
 
     // 누락 필드 확인 + 1회 재요청
     const incompleteIds = recsList
@@ -326,7 +349,8 @@ export async function POST(req: NextRequest) {
             h.image_url && !h.image_url.includes('source.unsplash.com')
               ? h.image_url
               : unsplashImages[h.hotel_id] ??
-                `https://picsum.photos/seed/${h.hotel_id}/800/450`,
+                CITY_IMAGES[cityEn] ??
+                CITY_IMAGES['default'],
           agoda_link: h.agoda_link,
           ...aiExtra,
         };
@@ -400,7 +424,8 @@ export async function POST(req: NextRequest) {
       price_max: null,
       image_url:
         unsplashImages[r.hotel_id] ??
-        `https://picsum.photos/seed/${r.hotel_id}/800/450`,
+        CITY_IMAGES[cityEn] ??
+        CITY_IMAGES['default'],
       agoda_link: agodaSearchUrl,
       fit: r.fit,
       caution: r.caution,

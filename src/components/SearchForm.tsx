@@ -69,6 +69,8 @@ interface Props {
   initialBudgetMax?: number;
   initialCity?: string;
   initialPriority?: SearchInput['priority'];
+  initialCheckin?: string;
+  initialCheckout?: string;
   /** true 이면 현재 목적(initialPurpose)을 흐리고 나머지를 강조 */
   highlightAlternativePurposes?: boolean;
 }
@@ -89,6 +91,8 @@ export default function SearchForm({
   initialBudgetMax,
   initialCity,
   initialPriority,
+  initialCheckin,
+  initialCheckout,
   highlightAlternativePurposes,
 }: Props) {
   const [step, setStep] = useState<1 | 2>(initialStep ?? 1);
@@ -101,8 +105,8 @@ export default function SearchForm({
   const [priority, setPriority] = useState<SearchInput['priority'] | ''>(
     initialPriority ?? ''
   );
-  const [checkin, setCheckin] = useState('');
-  const [checkout, setCheckout] = useState('');
+  const [checkin, setCheckin] = useState(initialCheckin ?? '');
+  const [checkout, setCheckout] = useState(initialCheckout ?? '');
 
   const fmt = (n: number) => (n / 10000).toLocaleString() + '만원';
 
