@@ -167,22 +167,32 @@ export async function POST(req: NextRequest) {
       }))
     );
 
+    const PURPOSE_CRITERIA: Record<string, string> = {
+      honeymoon: '프라이버시·뷰·로맨틱 시설·조식 포함 여부',
+      family: '공간 크기·키즈시설·안전·수영장',
+      business: '도심 위치·와이파이 품질·조식·체크인 편의',
+      solo: '가성비·교통 접근성·안전·커뮤니티',
+    };
+
     const result = streamText({
       model: anthropic('claude-haiku-4-5-20251001'),
-      system: '한국 여행 전문가. 여행자 조건에 맞는 호텔 3개를 추천하고 이유를 설명해.',
+      system: '한국 여행 전문가. 데이터 기반 호텔 의사결정. 감언이설 금지. JSON만 출력.',
       messages: [
         {
           role: 'user',
           content:
-            `여행 목적: ${purposeKo}, 도시: ${input.city}, ` +
-            `예산: ${input.budgetMin.toLocaleString()}~${input.budgetMax.toLocaleString()}원, ` +
-            `중요 요소: ${priorityKo}\n\n후보 호텔:\n${hotelData}\n\n` +
-            `위 조건으로 호텔 3개를 추천해줘. 각 호텔마다: 추천 이유(2~3줄), ` +
-            `이 여행자에게 맞는 이유, 주의사항 1가지. JSON 형식:\n` +
-            `{"recommendations":[{"hotel_id":"...","reason":"...","fit":"...","caution":"..."}]}`,
+            `여행자 프로파일:\n` +
+            `목적: ${purposeKo}, 예산: ${input.budgetMin.toLocaleString()}~${input.budgetMax.toLocaleString()}원/박\n` +
+            `도시: ${input.city}, 우선순위: ${priorityKo}, 기간: ${input.checkinDate}~${input.checkoutDate}\n\n` +
+            `판단 기준 (${purposeKo}): ${PURPOSE_CRITERIA[input.travelPurpose]}\n\n` +
+            `후보 호텔:\n${hotelData}\n\n` +
+            `최적 호텔 3개 선정. 반드시 아래 JSON만 출력:\n` +
+            `{"hotels":[{"hotel_id":"...","rank":1,"match_score":95,` +
+            `"fit":["이유1","이유2","이유3"],"caution":"주의사항1가지",` +
+            `"one_line":"한줄요약","urgency":"예약 긴급도 문구"}]}`,
         },
       ],
-      maxOutputTokens: 1000,
+      maxOutputTokens: 1200,
     });
 
     const hotelsJson = JSON.stringify(
@@ -219,31 +229,39 @@ export async function POST(req: NextRequest) {
   try {
     const { text: aiText } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
-      system:
-        `한국 여행 전문가. 주어진 여행지의 실제 존재하는 유명 호텔 3개를 추천해줘.\n` +
-        `JSON만 답해 (설명 없이):\n` +
-        `{"recommendations":[` +
-        `{"hotel_id":"ai_1","hotel_name":"실제호텔명","star_rating":4,"agoda_rating":8.5,` +
-        `"reason":"한국어 추천이유 2~3줄","fit":"한국어 이여행자에게맞는이유","caution":"한국어 주의사항"}` +
-        `],"ai_mode":true}`,
+      system: '한국 여행 전문가. 데이터 기반 호텔 의사결정. 감언이설 금지. JSON만 출력.',
       messages: [
         {
           role: 'user',
           content:
-            `여행지: ${cityEn || countryEn || input.city}, ` +
-            `목적: ${purposeKo}, 예산: ${input.budgetMax.toLocaleString()}원, ` +
-            `우선순위: ${priorityKo}`,
+            `여행지: ${cityEn || countryEn || input.city}, 목적: ${purposeKo}, ` +
+            `예산: ${input.budgetMax.toLocaleString()}원/박, 우선순위: ${priorityKo}\n\n` +
+            `실제 존재하는 유명 호텔 3개 추천. JSON만 출력:\n` +
+            `{"hotels":[{"hotel_id":"ai_1","hotel_name":"실제호텔명","star_rating":4,"agoda_rating":8.5,` +
+            `"fit":["이유1","이유2","이유3"],"caution":"주의사항","one_line":"한줄요약","urgency":"긴급도"}` +
+            `],"ai_mode":true}`,
         },
       ],
-      maxOutputTokens: 1000,
+      maxOutputTokens: 1200,
     });
 
     // JSON 파싱 후 Hotel 객체 구성
-    const jsonMatch = aiText.match(/\{[\s\S]*"recommendations"[\s\S]*\}/);
+    const jsonMatch = aiText.match(/\{[\s\S]*"(?:hotels|recommendations)"[\s\S]*\}/);
     if (!jsonMatch) throw new Error('AI JSON 파싱 실패');
 
     const aiData = JSON.parse(jsonMatch[0]) as {
-      recommendations: Array<{
+      hotels?: Array<{
+        hotel_id: string;
+        hotel_name: string;
+        star_rating?: number;
+        agoda_rating?: number;
+        fit?: string[];
+        caution?: string;
+        one_line?: string;
+        urgency?: string;
+        match_score?: number;
+      }>;
+      recommendations?: Array<{
         hotel_id: string;
         hotel_name: string;
         star_rating?: number;
@@ -251,7 +269,8 @@ export async function POST(req: NextRequest) {
       }>;
     };
 
-    const aiHotels = aiData.recommendations.map((r) => ({
+    const recs = aiData.hotels ?? aiData.recommendations ?? [];
+    const aiHotels = recs.map((r) => ({
       hotel_id: r.hotel_id,
       hotel_name: r.hotel_name,
       star_rating: r.star_rating ?? null,

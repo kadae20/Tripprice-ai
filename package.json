@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "full-sync": "tsx scripts/full-sync.ts"
+    "full-sync": "tsx scripts/full-sync.ts",
+    "update-images": "tsx scripts/update-images.ts",
+    "weekly-report": "tsx scripts/weekly-report.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",

@@ -15,7 +15,8 @@
       "Bash(taskkill:*)",
       "Bash(cmd:*)",
       "Bash(netstat:*)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "Bash(rtk npm:*)"
     ]
   }
 }
