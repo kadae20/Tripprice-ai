@@ -2,6 +2,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Tripi, { type TrippiMood } from './mascot/Tripi';
+
+function purposeToMood(p: string): TrippiMood {
+  if (p === 'honeymoon') return 'honeymoon';
+  return 'default';
+}
 
 export interface SearchInput {
   travelPurpose: 'honeymoon' | 'family' | 'business' | 'solo';
@@ -196,19 +202,22 @@ export default function SearchForm({
             variants={slideVariants}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
           >
-            {/* Step 1 headline */}
-            <h2
-              className="font-display"
-              style={{
-                fontSize: '26px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                marginBottom: highlightAlternativePurposes ? '12px' : '28px',
-                textAlign: 'center',
-              }}
-            >
-              어떤 여행인가요?
-            </h2>
+            {/* Step 1 headline + 트립이 */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: highlightAlternativePurposes ? '12px' : '28px' }}>
+              <Tripi mood={purposeToMood(purpose)} size="sm" animated />
+              <h2
+                className="font-display"
+                style={{
+                  fontSize: '26px',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  marginTop: '10px',
+                  textAlign: 'center',
+                }}
+              >
+                어떤 여행인가요?
+              </h2>
+            </div>
 
             {/* 목적 변경 힌트 */}
             {highlightAlternativePurposes && initialPurpose && (
@@ -619,9 +628,11 @@ export default function SearchForm({
               </div>
             </div>
 
-            {/* submit */}
-            <button
-              type="submit"
+            {/* 트립이 + submit */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Tripi mood={purposeToMood(purpose)} size="sm" animated />
+              <button
+                type="submit"
               disabled={!purpose || !city || !priority || loading}
               style={{
                 width: '100%',
@@ -650,8 +661,9 @@ export default function SearchForm({
                 el.style.transform = 'translateY(0)';
               }}
             >
-              {loading ? 'AI 분석 중...' : '최적 호텔 추천받기 →'}
-            </button>
+                {loading ? 'AI 분석 중...' : '최적 호텔 추천받기 →'}
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
