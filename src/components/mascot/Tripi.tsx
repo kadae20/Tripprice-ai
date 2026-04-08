@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { motion, useAnimation, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import TrippiDefault from './TrippiDefault';
 import TrippiSearching from './TrippiSearching';
 import TrippiSuccess from './TrippiSuccess';
@@ -26,11 +25,6 @@ const IDLE_ANIM = {
     animate: { y: [0, -4, 0] },
     transition: { repeat: Infinity, duration: 2, ease: 'easeInOut' },
   },
-};
-
-const BLINK_ANIM = {
-  animate: { scaleY: [1, 1, 0.05, 1, 1] },
-  transition: { repeat: Infinity, duration: 3, times: [0, 0.85, 0.9, 0.95, 1], ease: 'easeInOut' },
 };
 
 const BAG_ANIM = {
@@ -117,27 +111,12 @@ function AnimatedTripi({ mood, px }: { mood: TrippiMood; px: number }) {
     );
   }
 
-  /* default / honeymoon / empty — idle 숨쉬기 */
+  /* default / honeymoon / empty — idle 숨쉬기 (눈 깜빡임은 SVG 내부 CSS로 처리) */
   return (
     <motion.div
       style={{ display: 'inline-block', position: 'relative' }}
       {...IDLE_ANIM.body}
     >
-      {/* 눈 깜빡임 오버레이 */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          top: '35%',
-          left: '28%',
-          width: '44%',
-          height: '18%',
-          background: '#0A192F',
-          borderRadius: '50%',
-          transformOrigin: 'center',
-          pointerEvents: 'none',
-        }}
-        {...BLINK_ANIM}
-      />
       {/* 가방 흔들림 (default만) */}
       {mood === 'default' && (
         <motion.div

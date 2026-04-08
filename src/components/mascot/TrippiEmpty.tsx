@@ -10,6 +10,18 @@ export default function TrippiEmpty({ size = 120 }: { size?: number }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-label="트립이 데이터 없음"
     >
+      <style>{`
+        @keyframes tripi-blink {
+          0%, 88%, 100% { transform: scaleY(1); }
+          93% { transform: scaleY(0.05); }
+          96% { transform: scaleY(1); }
+        }
+        .tripi-eye {
+          animation: tripi-blink 3s infinite;
+          transform-origin: center center;
+          transform-box: fill-box;
+        }
+      `}</style>
       {/* 말풍선 */}
       <rect x="70" y="4" width="54" height="30" rx="8" fill="#1E3A5F" stroke="rgba(255,107,53,0.3)" strokeWidth="1.5" />
       <polygon points="78,34 86,34 82,42" fill="#1E3A5F" />
@@ -32,8 +44,8 @@ export default function TrippiEmpty({ size = 120 }: { size?: number }) {
       <ellipse cx="52" cy="52" rx="22" ry="20" fill="#1E3A5F" opacity="0.5" />
 
       {/* 눈 흰자 */}
-      <circle cx="40" cy="48" r="10" fill="#F0F4FF" />
-      <circle cx="64" cy="48" r="10" fill="#F0F4FF" />
+      <circle className="tripi-eye" cx="40" cy="48" r="10" fill="#F0F4FF" />
+      <circle className="tripi-eye" cx="64" cy="48" r="10" fill="#F0F4FF" />
 
       {/* 눈동자 */}
       <circle cx="41" cy="49" r="6" fill="#FF6B35" />

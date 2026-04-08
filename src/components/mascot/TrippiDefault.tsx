@@ -10,6 +10,18 @@ export default function TrippiDefault({ size = 120 }: { size?: number }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-label="트립이 기본"
     >
+      <style>{`
+        @keyframes tripi-blink {
+          0%, 88%, 100% { transform: scaleY(1); }
+          93% { transform: scaleY(0.05); }
+          96% { transform: scaleY(1); }
+        }
+        .tripi-eye {
+          animation: tripi-blink 3s infinite;
+          transform-origin: center center;
+          transform-box: fill-box;
+        }
+      `}</style>
       {/* 몸통 (살짝 우측 기울임) */}
       <g transform="rotate(8, 60, 70)">
         {/* 몸통 메인 */}
@@ -34,9 +46,9 @@ export default function TrippiDefault({ size = 120 }: { size?: number }) {
         <ellipse cx="60" cy="52" rx="22" ry="20" fill="#1E3A5F" opacity="0.5" />
 
         {/* 눈 흰자 왼쪽 */}
-        <circle cx="48" cy="50" r="10" fill="#F0F4FF" />
+        <circle className="tripi-eye" cx="48" cy="50" r="10" fill="#F0F4FF" />
         {/* 눈 흰자 오른쪽 */}
-        <circle cx="72" cy="50" r="10" fill="#F0F4FF" />
+        <circle className="tripi-eye" cx="72" cy="50" r="10" fill="#F0F4FF" />
 
         {/* 눈동자 왼쪽 */}
         <circle cx="49" cy="51" r="6" fill="#FF6B35" />

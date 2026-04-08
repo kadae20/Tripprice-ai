@@ -98,33 +98,6 @@ function HeroSection() {
       <div className="max-w-7xl mx-auto px-6 w-full py-20 flex flex-col lg:flex-row items-center gap-16 lg:gap-0">
         {/* Left 60% */}
         <div className="flex-1 lg:pr-12">
-          {/* 트립이 말풍선 (모바일에서만 상단에 표시) */}
-          <motion.div
-            className="lg:hidden"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}
-          >
-            <Tripi mood="default" size="sm" animated />
-            <div style={{
-              background: 'var(--bg-elevated)',
-              border: '1px solid rgba(255,107,53,0.25)',
-              borderRadius: '16px',
-              padding: '10px 14px',
-              fontSize: '13px',
-              color: 'var(--text-secondary)',
-              position: 'relative',
-            }}>
-              조건만 알려주세요! 제가 골라드려요 🦉
-              <div style={{
-                position: 'absolute', left: '-8px', top: '50%', transform: 'translateY(-50%)',
-                width: 0, height: 0,
-                borderTop: '6px solid transparent', borderBottom: '6px solid transparent',
-                borderRight: '8px solid var(--bg-elevated)',
-              }} />
-            </div>
-          </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
