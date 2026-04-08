@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Tripi from './mascot/Tripi';
 
 const MESSAGES = [
   '조건을 분석하고 있어요...',
@@ -36,50 +37,11 @@ export default function LoadingState({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '80px 0',
-        gap: '32px',
+        gap: '24px',
       }}
     >
-      {/* rotating ring */}
-      <div style={{ position: 'relative', width: '72px', height: '72px' }}>
-        {/* static track */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '50%',
-            border: '3px solid rgba(255,255,255,0.06)',
-          }}
-        />
-        {/* spinning arc */}
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '50%',
-            border: '3px solid transparent',
-            borderTopColor: 'var(--accent-orange)',
-            borderRightColor: 'rgba(255,107,53,0.25)',
-          }}
-        />
-        {/* inner pulsing dot */}
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8] }}
-          transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '10px',
-            height: '10px',
-            borderRadius: '50%',
-            background: 'var(--accent-orange)',
-            boxShadow: '0 0 12px rgba(255,107,53,0.6)',
-          }}
-        />
-      </div>
+      {/* 트립이 검색 중 */}
+      <Tripi mood="searching" size="md" animated />
 
       {/* branding */}
       <div style={{ textAlign: 'center' }}>

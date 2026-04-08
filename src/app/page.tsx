@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Tripi from '@/components/mascot/Tripi';
 
 /* ─────────────────────────────────────────────
    Animated counter hook
@@ -97,6 +98,33 @@ function HeroSection() {
       <div className="max-w-7xl mx-auto px-6 w-full py-20 flex flex-col lg:flex-row items-center gap-16 lg:gap-0">
         {/* Left 60% */}
         <div className="flex-1 lg:pr-12">
+          {/* 트립이 말풍선 (모바일에서만 상단에 표시) */}
+          <motion.div
+            className="lg:hidden"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}
+          >
+            <Tripi mood="default" size="sm" animated />
+            <div style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid rgba(255,107,53,0.25)',
+              borderRadius: '16px',
+              padding: '10px 14px',
+              fontSize: '13px',
+              color: 'var(--text-secondary)',
+              position: 'relative',
+            }}>
+              조건만 알려주세요! 제가 골라드려요 🦉
+              <div style={{
+                position: 'absolute', left: '-8px', top: '50%', transform: 'translateY(-50%)',
+                width: 0, height: 0,
+                borderTop: '6px solid transparent', borderBottom: '6px solid transparent',
+                borderRight: '8px solid var(--bg-elevated)',
+              }} />
+            </div>
+          </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -243,7 +271,34 @@ function HeroSection() {
           </motion.div>
         </div>
 
-        {/* Right 40% — floating card preview */}
+        {/* Right 40% — 트립이 + floating card preview */}
+        <div className="hidden lg:flex flex-col items-center gap-6" style={{ flexShrink: 0 }}>
+          {/* 트립이 + 말풍선 */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}
+          >
+            <Tripi mood="default" size="lg" animated />
+            <div style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid rgba(255,107,53,0.3)',
+              borderRadius: '20px',
+              borderBottomLeftRadius: '4px',
+              padding: '12px 18px',
+              fontSize: '14px',
+              color: 'var(--text-secondary)',
+              maxWidth: '180px',
+              lineHeight: 1.6,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            }}>
+              조건만 알려주세요!<br />
+              <span style={{ color: 'var(--accent-orange)', fontWeight: 600 }}>제가 골라드려요</span> 🦉
+            </div>
+          </motion.div>
+
+        {/* floating card */}
         <motion.div
           initial={{ opacity: 0, x: 40, rotateY: -15 }}
           animate={{ opacity: 1, x: 0, rotateY: -6 }}
@@ -359,6 +414,7 @@ function HeroSection() {
             </div>
           </div>
         </motion.div>
+        </div>{/* end lg:flex col */}
       </div>
 
       {/* scroll bounce arrow */}

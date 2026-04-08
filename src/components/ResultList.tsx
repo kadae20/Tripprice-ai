@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import HotelCard, { type Hotel } from './HotelCard';
+import Tripi from './mascot/Tripi';
 
 interface Props {
   hotels: Hotel[];
@@ -55,15 +56,16 @@ export default function ResultList({
             />
             <h2
               className="font-display"
-              style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)' }}
+              style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
+              <Tripi mood="success" size="sm" animated />
               AI 추천 결과
               <span
                 style={{
                   fontSize: '14px',
                   fontWeight: 400,
                   color: 'var(--accent-orange)',
-                  marginLeft: '8px',
+                  marginLeft: '4px',
                   fontFamily: 'var(--font-noto-sans-kr), sans-serif',
                 }}
               >
